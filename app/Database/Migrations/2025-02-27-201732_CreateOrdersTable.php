@@ -19,6 +19,7 @@ class CreateOrdersTable extends Migration
                 'type' => 'INT',
                 'constraint' => 11,
                 'unsigned' => true,
+                'null' => false,
             ],
             'status' => [
                 'type' => 'ENUM',
