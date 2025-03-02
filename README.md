@@ -45,6 +45,9 @@ The API will be available at: `http://localhost:8080`
 
 ## Endpoints
 
+A Postman collection file is available on the project root!
+
+
 ### Authentication
 
 #### Create Token (Required for any API method, using the Header: Key = Authorization and Value = Bearer YOUR_TOKEN)
