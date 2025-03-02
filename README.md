@@ -45,7 +45,8 @@ The API will be available at: `http://localhost:8080`
 
 ## Endpoints
 
-A Postman collection file is available on the project root!
+- **A Postman collection file is available on the project root!**
+- **A [Swagger Editor](https://editor.swagger.io/) YAML file is available on the project root!**
 
 
 ### Authentication
