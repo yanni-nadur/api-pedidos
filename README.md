@@ -1,68 +1,122 @@
-# CodeIgniter 4 Application Starter
+# Orders API - Codeigniter 4
 
-## What is CodeIgniter?
+## About the Project
+This project is a REST API developed with **Codeigniter 4** and **MySQL** for managing purchase orders. It includes CRUD operations for **customers**, **products**, and **orders**, as well as authentication via **JWT**.
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+## Technologies Used
+- **PHP** with **Codeigniter 4**
+- **MySQL** for the database
+- **JWT** for authentication
+- **Migrations** for database management
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+## Installation and Execution
+### 1️⃣ **Clone the repository**
+```bash
+git clone https://github.com/yanni-nadur/api-pedidos.git
+cd api-pedidos
+```
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+### 2️⃣ **Install dependencies**
+```bash
+composer install
+```
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+### 3️⃣ **Configure the environment*
+Rename the .env.example file to .env and set the database variables:
+```
+ database.default.hostname = localhost
+ database.default.database = your_database
+ database.default.username = your_user
+ database.default.password = your_password
+ 
+ JWT_SECRET_KEY = your_secret_key
 
-## Installation & updates
+```
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+### 4️⃣ **Run Migrations**
+```bash
+php spark migrate
+```
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+### 5️⃣ ** Start the server**
+```bash
+php spark serve
+```
+The API will be available at: `http://localhost:8080`
 
-## Setup
+## Endpoints
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+### Authentication
 
-## Important Change with index.php
+#### Create Token (Required for any API method, using the Header: Key = Authorization and Value = Bearer YOUR_TOKEN)
+- **POST** `/auth/login`
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+### Customers (`/customers`)
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+#### List customers
+- **GET** `/customers`
+- **Pagination parameters:** `page`, `per_page`
+- **Example:** `GET /customers?page=1&per_page=10`
+- **Filter parameters:** `name`, `cpf`, `created_at`, `updated_at`
+- **Example:** `GET /customers?name=Joao&created_at=2025`
 
-**Please** read the user guide for a better explanation of how CI4 works!
+#### Create customer
+- **POST** `/customers`
 
-## Repository Management
+#### Get specific customer
+- **GET** `/customers/{id}`
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+#### Update customer
+- **PUT** `/customers/{id}`
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+#### Delete customer
+- **DELETE** `/customers/{id}`
 
-## Server Requirements
+---
 
-PHP version 8.1 or higher is required, with the following extensions installed:
+### Products (`/products`)
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+#### List products
+- **GET** `/products`
+- **Pagination parameters:** `page`, `per_page`
+- **Example:** `GET /products?page=1&per_page=10`
+- **Filter parameters:** `name`, `price`, `created_at`, `updated_at`
+- **Example:** `GET /products?name=Water`
 
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - If you are still using PHP 7.4 or 8.0, you should upgrade immediately.
-> - The end of life date for PHP 8.1 will be December 31, 2025.
+#### Create product
+- **POST** `/products`
 
-Additionally, make sure that the following extensions are enabled in your PHP:
+#### Get specific product
+- **GET** `/products/{id}`
 
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+#### Update product
+- **PUT** `/products/{id}`
+
+#### Delete product
+- **DELETE** `/products/{id}`
+
+---
+
+### Orders  (`/orders`)
+
+#### List orders
+- **GET** `/orders`
+- **Pagination parameters:** `page`, `per_page`
+- **Example:** `GET /orders?page=1&per_page=10`
+- **Filter parameters:** `customer_id`, `status`, `created_at`, `updated_at`
+- **Example:** `GET /orders?status=Pending`
+
+#### Create order
+- **POST** `/orders`
+
+#### Get specific order
+- **GET** `/orders/{id}`
+
+#### Update order
+- **PUT** `/orders/{id}`
+
+#### Delete order
+- **DELETE** `/orders/{id}`
+
+---
+
