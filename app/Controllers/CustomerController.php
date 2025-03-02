@@ -11,14 +11,32 @@ class CustomerController extends ResourceController
 
     public function index()
     {
-        $customers = $this->model->findAll();
+        $perPage = $this->request->getGet('per_page') ?? 3; 
+        $page = $this->request->getGet('page') ?? 1; 
+
+        $query = $this->model;
+
+        foreach (['name', 'cpf', 'created_at', 'updated_at'] as $field) {
+            if ($value = $this->request->getGet($field)) {
+                $query = $query->like($field, $value);
+            }
+        }
+
+        $totalRecords = (clone $query)->countAllResults(false);
+        $totalPages = ceil($totalRecords / $perPage);
+
+        if ($totalRecords === 0 || $page > $totalPages) {
+            return $this->respond([
+                'header' => ['status' => 200, 'message' => 'No customers found'],
+                'pagination' => ['current_page' => $page, 'per_page' => $perPage, 'total_customers' => $totalRecords],
+                'data' => []
+            ]);
+        }
 
         return $this->respond([
-            'header' => [
-                'status'  => 200,
-                'message' => 'Customers list retrieved successfully'
-            ],
-            'data' => $customers
+            'header' => ['status' => 200, 'message' => 'Customers list retrieved successfully'],
+            'pagination' => ['current_page' => $page, 'per_page' => $perPage, 'total_customers' => $totalRecords],
+            'data' => $query->paginate($perPage, 'default', $page)
         ]);
     }
 

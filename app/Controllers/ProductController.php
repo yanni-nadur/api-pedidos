@@ -12,16 +12,36 @@ class ProductController extends ResourceController
 
     public function index()
     {
-        $products = $this->model->findAll();
+        $perPage = $this->request->getGet('per_page') ?? 3; 
+        $page = $this->request->getGet('page') ?? 1; 
+
+        $query = $this->model;
+
+        foreach (['name', 'price', 'created_at', 'updated_at'] as $field) {
+            if ($value = $this->request->getGet($field)) {
+                $query = $query->like($field, $value);
+            }
+        }
+
+        // Clone for count to avoid reset issue
+        $totalRecords = (clone $query)->countAllResults(false);
+        $totalPages = ceil($totalRecords / $perPage);
+
+        if ($totalRecords === 0 || $page > $totalPages) {
+            return $this->respond([
+                'header' => ['status' => 200, 'message' => 'No products found'],
+                'pagination' => ['current_page' => $page, 'per_page' => $perPage, 'total_products' => $totalRecords],
+                'data' => []
+            ]);
+        }
 
         return $this->respond([
-            'header' => [
-                'status'  => 200,
-                'message' => 'Data retrieved successfully'
-            ],
-            'data' => $products
+            'header' => ['status' => 200, 'message' => 'Products list retrieved successfully'],
+            'pagination' => ['current_page' => $page, 'per_page' => $perPage, 'total_products' => $totalRecords],
+            'data' => $query->paginate($perPage, 'default', $page)
         ]);
     }
+
 
     public function create()
     {
