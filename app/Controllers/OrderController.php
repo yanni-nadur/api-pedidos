@@ -86,13 +86,13 @@ class OrderController extends ResourceController
         $orderId = $orderModel->getInsertID();
 
         // Aux variables for order info
-        $totalPrice = 0;
+        $orderPrice = 0;
         $items = [];
 
         foreach ($data['items'] as $item) {
             $product = $productModel->find($item['product_id']);
-            $itemTotal = $product['price'] * $item['quantity'];
-            $totalPrice += $itemTotal;
+            $itemTotal = number_format($product['price'] * $item['quantity'], 2);
+            $orderPrice += $itemTotal;
 
             $orderItemModel->insert([
                 'order_id'   => $orderId,
@@ -103,11 +103,11 @@ class OrderController extends ResourceController
 
             // Order info
             $items[] = [
-                'product_id' => $item['product_id'],
-                'product_name' => $product['name'],
-                'quantity'   => $item['quantity'],
-                'price'      => $product['price'],
-                'total_price' => $itemTotal
+                'product_id'        => $item['product_id'],
+                'product_name'      => $product['name'],
+                'quantity'          => $item['quantity'],
+                'product_price'     => $product['price'],
+                'total_price'       => $itemTotal
             ];
         }
 
@@ -120,7 +120,7 @@ class OrderController extends ResourceController
                 'order_id'    => $orderId,
                 'customer_id' => $data['customer_id'],
                 'status'      => 'Pending',
-                'total_price' => $totalPrice,
+                'order_price' => $orderPrice,
                 'items'       => $items
             ]
         ]);
@@ -130,27 +130,37 @@ class OrderController extends ResourceController
     {
         $orderModel = new OrderModel();
         $orderItemModel = new OrderItemModel();
+        $productModel = new ProductModel();
 
+        // Find the order
         $order = $orderModel->find($id);
         if (!$order) {
             return $this->failNotFound('Order not found');
         }
 
+        // Retrieve order items
         $items = $orderItemModel->where('order_id', $id)->findAll();
+        
         if (!$items) {
             return $this->failNotFound('No items found for this order');
         }
 
         $itemDetails = [];
+        $totalPrice = 0; 
+
         foreach ($items as $item) {
             $product = $productModel->find($item['product_id']);
+
             if ($product) {
+                $itemTotalPrice = $item['quantity'] * $item['price'];
+                $totalPrice += $itemTotalPrice;
+
                 $itemDetails[] = [
                     'product_id' => $item['product_id'],
                     'product_name' => $product['name'],
                     'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                    'total' => number_format($item['quantity'] * $item['price'], 2)
+                    'product_price' => $item['price'],
+                    'total_price' => number_format($itemTotalPrice, 2)
                 ];
             }
         }
@@ -164,6 +174,7 @@ class OrderController extends ResourceController
                 'order' => [
                     'order_id' => $order['id'],
                     'status' => $order['status'],
+                    'total_price' => number_format($totalPrice, 2),
                     'created_at' => $order['created_at'],
                     'updated_at' => $order['updated_at']
                 ],
@@ -172,92 +183,54 @@ class OrderController extends ResourceController
         ]);
     }
 
+
     public function update($id = null)
     {
         $orderModel = new OrderModel();
         $orderItemModel = new OrderItemModel();
-        $customerModel = new CustomerModel();
-        $productModel = new ProductModel();
         $data = $this->request->getJSON(true);
-
-
-        // Update request fields validation
+    
         $order = $orderModel->find($id);
         if (!$order) {
             return $this->failNotFound('Order not found');
         }
-
-        if (isset($data['customer_id']) && !$customerModel->find($data['customer_id'])) {
-            return $this->failNotFound('Customer not found');
+    
+        if (!isset($data['status']) || !in_array($data['status'], ['Pending', 'Paid', 'Canceled'])) {
+            return $this->failValidationErrors('Invalid or missing status value');
         }
-
-        if (isset($data['status']) && !in_array($data['status'], ['Pending', 'Paid', 'Canceled'])) {
-            return $this->failValidationErrors('Invalid status value');
-        }
-
-        // Update order status
-        if (isset($data['status'])) {
+    
+        if ($order['status'] !== $data['status']) {
             $orderModel->update($id, ['status' => $data['status']]);
         }
-
-        if (isset($data['items']) && is_array($data['items'])) {
-            $invalidProductIds = [];
-
-            foreach ($data['items'] as $item) {
-                if (!isset($item['product_id']) || !isset($item['quantity'])) {
-                    return $this->failValidationErrors('Invalid item format (missing product_id or quantity)');
-                }
-
-                if (!$productModel->find($item['product_id'])) {
-                    $invalidProductIds[] = $item['product_id'];
-                }
-            }
-
-            if (!empty($invalidProductIds)) {
-                return $this->failNotFound('The following products were not found: ' . implode(', ', $invalidProductIds));
-            }
-
-            foreach ($data['items'] as $item) {
-                if (!$productModel->find($item['product_id'])) {
-                    continue;
-                }
     
-                // Check if the item already exists in the order
-                $existingItem = $orderItemModel->where('order_id', $id)
-                    ->where('product_id', $item['product_id'])
-                    ->first();
-    
-                if ($existingItem) {
-                    $orderItemModel->update($existingItem['id'], [
-                        'quantity' => $item['quantity'],
-                        'price' => $item['price'] ?? $existingItem['price'] // Old price if not specified
-                    ]);
-                } else {
-                    $orderItemModel->insert([
-                        'order_id' => $id,
-                        'product_id' => $item['product_id'],
-                        'quantity' => $item['quantity'],
-                        'price' => $item['price'] ?? 0 // Default price is 0
-                    ]);
-                }
-            }
-        }
-
-        // Updated order details
+        // Find updated order
         $updatedOrder = $orderModel->find($id);
-        $updatedItems = $orderItemModel->where('order_id', $id)->findAll();
-
+        $orderItems = $orderItemModel->where('order_id', $id)->findAll();
+    
+        $totalPrice = 0;
+        foreach ($orderItems as &$item) {
+            $item['total_price'] = $item['quantity'] * $item['price'];
+            $totalPrice += $item['total_price'];
+        }
+    
         return $this->respond([
             'header' => [
                 'status' => 200,
-                'message' => 'Order updated successfully'
+                'message' => 'Order status updated successfully'
             ],
             'data' => [
-                'order' => $updatedOrder,
-                'items' => $updatedItems
+                'order' => [
+                    'order_id' => $updatedOrder['id'],
+                    'status' => $updatedOrder['status'],
+                    'order_price' => $totalPrice,
+                    'created_at' => $updatedOrder['created_at'],
+                    'updated_at' => $updatedOrder['updated_at']
+                ],
+                'items' => $orderItems
             ]
         ]);
     }
+
 
     public function delete($id = null)
     {
