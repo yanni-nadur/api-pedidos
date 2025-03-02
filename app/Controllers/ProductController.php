@@ -23,7 +23,6 @@ class ProductController extends ResourceController
             }
         }
 
-        // Clone for count to avoid reset issue
         $totalRecords = (clone $query)->countAllResults(false);
         $totalPages = ceil($totalRecords / $perPage);
 
