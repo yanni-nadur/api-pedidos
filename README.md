@@ -22,15 +22,14 @@ composer install
 ```
 
 ### 3️⃣ **Configure the environment*
-Rename the .env.example file to .env and set the database variables:
+Rename the .env.example file to .env and set the database/JWT variables:
 ```
  database.default.hostname = localhost
  database.default.database = your_database
  database.default.username = your_user
  database.default.password = your_password
- 
- JWT_SECRET_KEY = your_secret_key
 
+ JWT_SECRET_KEY = your_secret_key
 ```
 
 ### 4️⃣ **Run Migrations**
