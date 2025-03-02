@@ -19,7 +19,7 @@ class CreateCustomersTable extends Migration
                 'type' => 'VARCHAR',
                 'constraint' => 255,
             ],
-            'cpf_cnpj' => [
+            'cpf' => [
                 'type' => 'VARCHAR',
                 'constraint' => 14,
                 'unique' => true,

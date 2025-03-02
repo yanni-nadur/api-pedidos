@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\OrderModel;
 use App\Models\OrderItemModel;
+use App\Models\ProductModel;
 use CodeIgniter\RESTful\ResourceController;
 
 class OrderController extends ResourceController
@@ -30,22 +31,14 @@ class OrderController extends ResourceController
         $orderItemModel = new OrderItemModel();
         $data = $this->request->getJSON(true);
 
-        // Checking requisition data, simple validation
         if (!isset($data['customer_id']) || !isset($data['items']) || !is_array($data['items'])) {
-            return $this->failValidationErrors([
-                'header' => [
-                    'status' => 400,
-                    'message' => 'Invalid data'
-                ],
-                'data' => null
-            ]);
+            return $this->failValidationErrors('Invalid data');
         }
 
         $orderData = ['customer_id' => $data['customer_id'], 'status' => 'Pending'];
         $orderModel->insert($orderData);
         $orderId = $orderModel->getInsertID();
 
-        // Iteration for order items
         foreach ($data['items'] as $item) {
             $orderItemModel->insert([
                 'order_id'   => $orderId,
@@ -71,16 +64,9 @@ class OrderController extends ResourceController
 
         $order = $orderModel->find($id);
         if (!$order) {
-            return $this->failNotFound([
-                'header' => [
-                    'status' => 404,
-                    'message' => 'Order not found'
-                ],
-                'data' => null
-            ]);
+            return $this->failNotFound('Order not found');
         }
 
-        // Find the order items on the temporary table
         $items = $orderItemModel->where('order_id', $id)->findAll();
 
         return $this->respond([
@@ -103,62 +89,32 @@ class OrderController extends ResourceController
         
         $data = $this->request->getJSON(true);
 
-        // Verifying if the product exists
         $order = $orderModel->find($id);
         if (!$order) {
-            return $this->failNotFound([
-                'header' => [
-                    'status' => 404,
-                    'message' => 'Order not found'
-                ],
-                'data' => null
-            ]);
+            return $this->failNotFound('Order not found');
         }
 
-        // Checking if the requisition status actually it's valid
+        if (isset($data['status']) && !in_array($data['status'], ['Pending', 'Paid', 'Canceled'])) {
+            return $this->failValidationErrors('Invalid status value');
+        }
+
         if (isset($data['status'])) {
-            if (!in_array($data['status'], ['Pending', 'Paid', 'Canceled'])) {
-                return $this->failValidationErrors([
-                    'header' => [
-                        'status' => 400,
-                        'message' => 'Invalid status value'
-                    ],
-                    'data' => null
-                ]);
-            }
             $orderModel->update($id, ['status' => $data['status']]);
         }
 
-        // Updating order items
         if (isset($data['items']) && is_array($data['items'])) {
             $existingItems = $orderItemModel->where('order_id', $id)->findAll();
             $existingItemIds = array_column($existingItems, 'product_id');
 
             foreach ($data['items'] as $item) {
-
-                // Checking for must-have fields 
                 if (!isset($item['product_id'], $item['quantity'], $item['price'])) {
-                    return $this->failValidationErrors([
-                        'header' => [
-                            'status' => 400,
-                            'message' => 'Invalid item format'
-                        ],
-                        'data' => null
-                    ]);
+                    return $this->failValidationErrors('Invalid item format');
                 }
 
-                // Verify if the product exists
                 if (!$productModel->find($item['product_id'])) {
-                    return $this->failNotFound([
-                        'header' => [
-                            'status' => 404,
-                            'message' => 'Product not found'
-                        ],
-                        'data' => null
-                    ]);
+                    return $this->failNotFound('Product not found');
                 }
 
-                // Update the existing item or insert if not there before
                 if (in_array($item['product_id'], $existingItemIds)) {
                     $orderItemModel->where('order_id', $id)
                         ->where('product_id', $item['product_id'])
@@ -177,32 +133,22 @@ class OrderController extends ResourceController
             }
         }
 
-        // Return updated order
-        $updatedOrder = $orderModel->find($id);
         return $this->respond([
             'header' => [
                 'status' => 200,
                 'message' => 'Order updated successfully'
             ],
-            'data' => $updatedOrder
+            'data' => $orderModel->find($id)
         ]);
     }
-
 
     public function delete($id = null)
     {
         $orderModel = new OrderModel();
         $orderItemModel = new OrderItemModel();
 
-        $order = $orderModel->find($id);
-        if (!$order) {
-            return $this->failNotFound([
-                'header' => [
-                    'status' => 404,
-                    'message' => 'Order not found'
-                ],
-                'data' => null
-            ]);
+        if (!$orderModel->find($id)) {
+            return $this->failNotFound('Order not found');
         }
 
         $orderItemModel->where('order_id', $id)->delete();

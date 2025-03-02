@@ -27,124 +27,92 @@ class ProductController extends ResourceController
     {
         $data = $this->request->getJSON(true);
 
+        // Simple conversion to allow both "20.00" and "20,00" hehe
         if (isset($data['price'])) {
-            // Simple conversion to allow both "20.00" and "20,00" hehe
             $data['price'] = str_replace(',', '.', $data['price']);
         }
 
-        // Product price validation
         if (!isset($data['price']) || !is_numeric($data['price']) || $data['price'] <= 0) {
-            return $this->failValidationErrors([
-                'header' => [
-                    'status'  => 400,
-                    'message' => 'Validation error'
-                ],
-                'data' => ['price' => 'The price must be higher than 0']
-            ]);
+            return $this->failValidationErrors('The price must be higher than 0');
         }
 
-        if ($this->model->insert($data)) {
-            return $this->respondCreated([
-                'header' => [
-                    'status'  => 201,
-                    'message' => 'Product created successfully'
-                ],
-                'data' => $data
-            ]);
+        if (!$this->model->insert($data)) {
+            return $this->failValidationErrors('Validation error');
         }
 
-        return $this->failValidationErrors([
+        return $this->respondCreated([
             'header' => [
-                'status'  => 400,
-                'message' => 'Validation error'
+                'status'  => 201,
+                'message' => 'Product created successfully'
             ],
-            'data' => $this->model->errors()
+            'data' => $data
         ]);
     }
-
 
     public function show($id = null)
     {
         $product = $this->model->find($id);
 
-        if ($product) {
-            return $this->respond([
-                'header' => [
-                    'status'  => 200,
-                    'message' => 'Product found'
-                ],
-                'data' => $product
-            ]);
+        if (!$product) {
+            return $this->failNotFound('Product not found');
         }
 
-        return $this->failNotFound([
+        return $this->respond([
             'header' => [
-                'status'  => 404,
-                'message' => 'Product not found'
+                'status'  => 200,
+                'message' => 'Product found'
             ],
-            'data' => null
+            'data' => $product
         ]);
     }
 
     public function update($id = null)
     {
         $data = $this->request->getJSON(true);
-
-        if (!$this->model->find($id)) {
-            return $this->failNotFound([
-                'header' => [
-                    'status'  => 404,
-                    'message' => 'Product not found'
-                ],
-                'data' => null
-            ]);
+        $product = $this->model->find($id);
+        
+        if (!$product) {
+            return $this->failNotFound('Product not found');
         }
 
-        if ($this->model->update($id, $data)) {
-            return $this->respond([
-                'header' => [
-                    'status'  => 200,
-                    'message' => 'Product updated successfully'
-                ],
-                'data' => $this->model->find($id)
-            ]);
+        if (empty($data)) {
+            return $this->failValidationErrors('No data provided for update');
         }
 
-        return $this->failValidationErrors([
+        // Same conversion of my create method
+        if (isset($data['price'])) {
+            $data['price'] = str_replace(',', '.', $data['price']);
+
+            if (!is_numeric($data['price']) || $data['price'] <= 0) {
+                return $this->failValidationErrors('The price must be a positive number');
+            }
+        }
+
+        if (!$this->model->update($id, $data)) {
+            return $this->failValidationErrors('Validation error');
+        }
+
+        return $this->respond([
             'header' => [
-                'status'  => 400,
-                'message' => 'Validation error'
+                'status'  => 200,
+                'message' => 'Product updated successfully'
             ],
-            'data' => $this->model->errors()
+            'data' => $this->model->find($id)
         ]);
     }
 
     public function delete($id = null)
     {
         if (!$this->model->find($id)) {
-            return $this->failNotFound([
-                'header' => [
-                    'status'  => 404,
-                    'message' => 'Product not found'
-                ],
-                'data' => null
-            ]);
+            return $this->failNotFound('Product not found');
         }
 
-        if ($this->model->delete($id)) {
-            return $this->respondDeleted([
-                'header' => [
-                    'status'  => 200,
-                    'message' => 'Product deleted successfully'
-                ],
-                'data' => null
-            ]);
-        }
+        $this->model->delete($id);
 
-        return $this->failServerError([
+        return $this->respondDeleted([
             'header' => [
-                'status'  => 500,
-                'message' => 'Error deleting product'
+                'status'  => 200,
+                'message' => 'Product deleted successfully'
             ],
             'data' => null
         ]);

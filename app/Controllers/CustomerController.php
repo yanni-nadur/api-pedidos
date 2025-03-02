@@ -3,7 +3,6 @@
 namespace App\Controllers;
 
 use CodeIgniter\RESTful\ResourceController;
-use App\Models\CustomerModel;
 
 class CustomerController extends ResourceController
 {
@@ -17,7 +16,7 @@ class CustomerController extends ResourceController
         return $this->respond([
             'header' => [
                 'status'  => 200,
-                'message' => 'Data retrieved successfully'
+                'message' => 'Customers list retrieved successfully'
             ],
             'data' => $customers
         ]);
@@ -27,22 +26,28 @@ class CustomerController extends ResourceController
     {
         $data = $this->request->getJSON(true);
 
-        if ($this->model->insert($data)) {
-            return $this->respondCreated([
-                'header' => [
-                    'status' => 201,
-                    'message' => 'Customer created successfully'
-                ],
-                'data' => $data
-            ]);
+        if (!$data) {
+            return $this->failValidationErrors('No data provided');
+        }
+    
+        if (isset($data['cpf']) && !preg_match('/^\d{3}\.\d{3}\.\d{3}-\d{2}$/', $data['cpf'])) {
+            return $this->failValidationErrors('Invalid CPF format. The correct format is XXX.XXX.XXX-XX');
+        }
+    
+        if ($this->model->where('cpf', $data['cpf'])->first()) {
+            return $this->failValidationErrors('CPF already exists in the system');
+        }
+        
+        if (!$this->model->insert($data)) {
+            return $this->failValidationErrors('Validation error');
         }
 
-        return $this->failValidationErrors([
+        return $this->respondCreated([
             'header' => [
-                'status' => 400,
-                'message' => 'Validation error'
+                'status'  => 201,
+                'message' => 'Customer created successfully'
             ],
-            'data' => $this->model->errors()
+            'data' => $data
         ]);
     }
 
@@ -50,22 +55,16 @@ class CustomerController extends ResourceController
     {
         $customer = $this->model->find($id);
 
-        if ($customer) {
-            return $this->respond([
-                'header' => [
-                    'status'  => 200,
-                    'message' => 'Customer found'
-                ],
-                'data' => $customer
-            ]);
+        if (!$customer) {
+            return $this->failNotFound('Customer not found');
         }
 
-        return $this->failNotFound([
+        return $this->respond([
             'header' => [
-                'status'  => 404,
-                'message' => 'Customer not found'
+                'status'  => 200,
+                'message' => 'Customer found'
             ],
-            'data' => null
+            'data' => $customer
         ]);
     }
 
@@ -74,62 +73,48 @@ class CustomerController extends ResourceController
         $data = $this->request->getJSON(true);
 
         if (!$this->model->find($id)) {
-            return $this->failNotFound([
-                'header' => [
-                    'status'  => 404,
-                    'message' => 'Customer not found'
-                ],
-                'data' => null
-            ]);
+            return $this->failNotFound('Customer not found');
         }
 
-        if ($this->model->update($id, $data)) {
-            return $this->respond([
-                'header' => [
-                    'status' => 200,
-                    'message' => 'Customer updated successfully'
-                ],
-                'data' => $this->model->find($id) // Retorna os dados atualizados
-            ]);
+        if (empty($data)) {
+            return $this->failValidationErrors('No data provided for update');
         }
-        
-        return $this->failValidationErrors([
+
+        if (isset($data['cpf']) && !preg_match('/^\d{3}\.\d{3}\.\d{3}-\d{2}$/', $data['cpf'])) {
+            return $this->failValidationErrors('Invalid CPF format. The correct format is XXX.XXX.XXX-XX');
+        }
+
+        if (!$this->model->update($id, $data)) {
+            return $this->failValidationErrors('Validation error');
+        }
+
+        return $this->respond([
             'header' => [
-                'status' => 400,
-                'message' => 'Validation error'
+                'status'  => 200,
+                'message' => 'Customer updated successfully'
             ],
-            'data' => $this->model->errors()
+            'data' => $this->model->find($id)
         ]);
     }
 
     public function delete($id = null)
     {
-        if (!$this->model->find($id)) {
-            return $this->failNotFound([
-                'header' => [
-                    'status'  => 404,
-                    'message' => 'Customer not found'
-                ],
-                'data' => null
-            ]);
+        $customer = $this->model->find($id);
+    
+        if (!$customer) {
+            return $this->failNotFound('Customer not found');
         }
-
+    
         if ($this->model->delete($id)) {
             return $this->respondDeleted([
                 'header' => [
-                    'status' => 200,
-                    'message' => 'Customer deleted successfully'
+                    'status'  => 200,
+                    'message' => 'Customer ' . $customer['name'] . ' deleted successfully'
                 ],
                 'data' => null
             ]);
         }
-
-        return $this->failServerError([
-            'header' => [
-                'status'  => 500,
-                'message' => 'Error deleting customer'
-            ],
-            'data' => null
-        ]);
+    
+        return $this->failServerError('Error deleting customer');
     }
 }
